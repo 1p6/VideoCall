@@ -29,12 +29,17 @@ function create(){
 	joinBtn.style.display = 'none';
 	
 	var pc = new webkitRTCPeerConnection(servers);
-	var candidates = [];
+	var candidates = "";
 	
 	pc.onicecandidate = function(evt){
 		console.log(evt);
 		if(evt.candidate){
-			candidates.push(evt.candidate);
+			candidates += "♀" + JSON.stringify(evt.candidate);
+		} else {
+			pc.onicecandidate = null;
+			inst.innerText = "Send this to the other person and then click continue.";
+			area.value = candidates;
+			button.onclick = receiveAnswer;
 		}
 	};
 	
@@ -53,43 +58,33 @@ function create(){
 		button.style.display = 'none';
 		inst.innerText = "Now just wait until you connect.  To end the call, close this tab.";
 		
-		var desc = new RTCSessionDescription(JSON.parse(area.value));
-		console.log(desc);
-		pc.setRemoteDescription(desc);
+		var things = area.value.split("♀");
+		var offer = new RTCSessionDescription(JSON.parse(things.shift()));
+		
+		pc.setRemoteDescription(offer);
+		
+		for(var i in things){
+			var candidate = new RTCIceCandidate(JSON.parse(things[i]));
+			console.log(candidate);
+			pc.addIceCandidate(candidate);
+		}
 	}
 	
 	function createLocalOffer(){
+		inst.innerText = "Processing...";
+		
 		pc.createOffer(function(desc){
 			console.log(desc);
 			pc.setLocalDescription(desc, function(){
-				inst.innerText = "Send this to the other person and then click continue.";
-				area.value = JSON.stringify(pc.localDescription);
-				button.onclick = receiveAnswer;
+				candidates = JSON.stringify(pc.localDescription);
 			}, function(){});
 		})
-	}
-	
-	function setupDataChannel(){
-		dc = pc.createDataChannel("test", {reliable: true});
-		
-		dc.onload = function(){
-			for(var i in candidates){
-				dc.send(JSON.stringify(candidates[i]));
-			}
-		};
-		
-		dc.onmessage = function(evt){
-			var message = JSON.parse(evt.data);
-			
-			pc.addIceCandidate(new RTCIceCandidate(message));
-		};
 	}
 	
 	navigator.webkitGetUserMedia({video: true, audio: true}, function(stream){
 		vid1.src = URL.createObjectURL(stream);
 		pc.addStream(stream);
 		
-		setupDataChannel();
 		createLocalOffer();
 	}, function(){});
 }
@@ -99,28 +94,17 @@ function join(){
 	joinBtn.style.display = 'none';
 	
 	var pc = new webkitRTCPeerConnection(servers);
-	var candidates = [];
-	
-	pc.ondatachannel = function(evt){
-		dc = evt.channel;
-		
-		dc.onload = function(){
-			for(var i in candidates){
-				dc.send(JSON.stringify(candidates[i]));
-			}
-		};
-		
-		dc.onmessage = function(evt){
-			var message = JSON.parse(evt.data);
-			
-			pc.addIceCandidate(new RTCIceCandidate(message));
-		};
-	};
+	var candidates = "";
 	
 	pc.onicecandidate = function(evt){
 		console.log(evt);
 		if(evt.candidate){
-			candidates.push(evt.candidate);
+			candidates += "♀" + JSON.stringify(evt.candidate);
+		} else {
+			pc.onicecandidate = null;
+			inst.innerText = "Now send this to the other person and click continue.";
+			area.value = candidates;
+			button.onclick = answerSent;
 		}
 	};
 	
@@ -141,18 +125,23 @@ function join(){
 	
 	function processOffer(){
 		inst.innerText = "Processing...";
-		var offer = new RTCSessionDescription(JSON.parse(area.value));
+		var things = area.value.split("♀");
 		area.value = "";
+		var offer = new RTCSessionDescription(JSON.parse(things.shift()));
 		
 		pc.setRemoteDescription(offer);
 		pc.createAnswer(function(desc){
 			console.log(desc);
 			pc.setLocalDescription(desc, function(){
-				inst.innerText = "Now send this to the other person and click continue.";
-				area.value = JSON.stringify(pc.localDescription);
-				button.onclick = answerSent;
+				candidates = JSON.stringify(pc.localDescription);
 			}, function(){});
 		}, function(){});
+		
+		for(var i in things){
+			var candidate = new RTCIceCandidate(JSON.parse(things[i]));
+			console.log(candidate);
+			pc.addIceCandidate(candidate);
+		}
 	}
 	
 	navigator.webkitGetUserMedia({video: true, audio: true}, function(stream){
