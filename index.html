@@ -1,0 +1,125 @@
+<video id="vid1" autoplay muted></video>
+<video id="vid2" autoplay></video>
+
+<br>
+<p id="inst"></p>
+<textarea id="area"></textarea>
+<button id="button">Continue</button>
+<button id="create">Create room</button>
+<button id="join">Join room</button>
+
+<script>
+var vid1 = document.querySelector("#vid1");
+var vid2 = document.querySelector("#vid2");
+var inst = document.querySelector("#inst");
+var area = document.querySelector("#area");
+var button = document.querySelector("#button");
+var createBtn = document.querySelector("#create");
+var joinBtn = document.querySelector("#join");
+
+createBtn.onclick = create;
+joinBtn.onclick = join;
+
+var servers = {iceServers: [{url: 'stun:stun4.l.google.com:19302'}]};
+
+function create(){
+	createBtn.style.display = 'none';
+	joinBtn.style.display = 'none';
+	
+	var pc = new webkitRTCPeerConnection(servers);
+	pc.onicecandidate = function(evt){
+		console.log(evt);
+		if(evt.candidate == null){
+			inst.innerText = "Send this to other person and then click continue.";
+			area.value = JSON.stringify(pc.localDescription);
+			button.onclick = receiveAnswer;
+		}
+	}
+	
+	pc.onaddstream = function(evt){
+		vid2.src = URL.createObjectURL(evt.stream);
+	};
+	
+	function receiveAnswer(){
+		inst.innerText = "Paste answer received from other person then click continue.";
+		area.value = "";
+		button.onclick = processAnswer;
+	}
+	
+	function processAnswer(){
+		area.style.display = 'none';
+		button.style.display = 'none';
+		inst.innerText = "Now just wait until you connect.  To end the call, close this tab.";
+		
+		var desc = new RTCSessionDescription(JSON.parse(area.value));
+		console.log(desc);
+		pc.setRemoteDescription(desc);
+	}
+	
+	function createLocalOffer(){
+		pc.createOffer(function(desc){
+			console.log(desc);
+			pc.setLocalDescription(desc, function(){}, function(){});
+			inst.innerText = "Loading...";
+		})
+	}
+	
+	navigator.webkitGetUserMedia({video: true, audio: true}, function(stream){
+		console.log(stream);
+		vid1.src = URL.createObjectURL(stream);
+		pc.addStream(stream);
+		createLocalOffer();
+	}, function(){});
+}
+
+function join(){
+	createBtn.style.display = 'none';
+	joinBtn.style.display = 'none';
+	
+	var pc = new webkitRTCPeerConnection(servers);
+	
+	pc.onicecandidate = function(evt){
+		console.log(evt);
+		if(evt.candidate == null){
+			inst.innerText = "Now send this to the other person and click continue.";
+			area.value = JSON.stringify(pc.localDescription);
+			button.onclick = answerSent;
+		}
+	};
+	
+	pc.onaddstream = function(evt){
+		vid2.src = URL.createObjectURL(evt.stream);
+	};
+	
+	function answerSent(){
+		area.style.display = 'none';
+		button.style.display = 'none';
+		inst.innerText = "Now just wait until you connect.  To end the call, close this tab.";
+	}
+	
+	function acceptOffer(){
+		inst.innerText = "Paste the offer the other person sent you into the textbox and click continue.";
+		button.onclick = processOffer;
+	}
+	
+	function processOffer(){
+		inst.innerText = "Processing...";
+		var offer = new RTCSessionDescription(JSON.parse(area.value));
+		area.value = "";
+		
+		pc.setRemoteDescription(offer);
+		pc.createAnswer(function(desc){
+			console.log(desc);
+			pc.setLocalDescription(desc, function(){}, function(){});
+		}, function(){});
+	}
+	
+	navigator.webkitGetUserMedia({video: true, audio: true}, function(stream){
+		console.log(stream);
+		vid1.src = URL.createObjectURL(stream);
+		pc.addStream(stream);
+		acceptOffer();
+	}, function(){});
+}
+
+</script>
