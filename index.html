@@ -29,22 +29,15 @@ function create(){
 	joinBtn.style.display = 'none';
 	
 	var pc = new webkitRTCPeerConnection(servers);
-	var candidates = "";
 	
 	pc.onicecandidate = function(evt){
 		console.log(evt);
-		if(evt.candidate){
-			candidates += "♀" + JSON.stringify(evt.candidate);
-		} else {
+		if(!evt.candidate){
 			pc.onicecandidate = null;
 			inst.innerText = "Send this to the other person and then click continue.";
-			area.value = candidates;
+			area.value = JSON.stringify(pc.localDescription);
 			button.onclick = receiveAnswer;
 		}
-	};
-	
-	pc.onaddstream = function(evt){
-		vid2.src = URL.createObjectURL(evt.stream);
 	};
 	
 	function receiveAnswer(){
@@ -58,35 +51,32 @@ function create(){
 		button.style.display = 'none';
 		inst.innerText = "Now just wait until you connect.  To end the call, close this tab.";
 		
-		var things = area.value.split("♀");
-		var offer = new RTCSessionDescription(JSON.parse(things.shift()));
+		var offer = new RTCSessionDescription(JSON.parse(area.value));
+		area.value = "";
 		
 		pc.setRemoteDescription(offer);
-		
-		for(var i in things){
-			var candidate = new RTCIceCandidate(JSON.parse(things[i]));
-			console.log(candidate);
-			pc.addIceCandidate(candidate);
-		}
 	}
 	
 	function createLocalOffer(){
-		inst.innerText = "Processing...";
-		
 		pc.createOffer(function(desc){
 			console.log(desc);
-			pc.setLocalDescription(desc, function(){
-				candidates = JSON.stringify(pc.localDescription);
-			}, function(){});
+			pc.setLocalDescription(desc);
 		})
 	}
 	
-	navigator.webkitGetUserMedia({video: true, audio: true}, function(stream){
-		vid1.src = URL.createObjectURL(stream);
-		pc.addStream(stream);
+	function setupDataConnection(){
+		var dc = pc.createDataChannel("test", {reliable: true});
 		
-		createLocalOffer();
-	}, function(){});
+		dc.onopen = function(){
+			next(true, dc);
+		};
+		console.log(dc.onopen);
+	}
+	
+	inst.innerText = "Processing...";
+	
+	setupDataConnection();
+	createLocalOffer();
 }
 
 function join(){
@@ -94,22 +84,23 @@ function join(){
 	joinBtn.style.display = 'none';
 	
 	var pc = new webkitRTCPeerConnection(servers);
-	var candidates = "";
 	
 	pc.onicecandidate = function(evt){
 		console.log(evt);
-		if(evt.candidate){
-			candidates += "♀" + JSON.stringify(evt.candidate);
-		} else {
+		if(!evt.candidate){
 			pc.onicecandidate = null;
 			inst.innerText = "Now send this to the other person and click continue.";
-			area.value = candidates;
+			area.value = JSON.stringify(pc.localDescription);
 			button.onclick = answerSent;
 		}
 	};
 	
-	pc.onaddstream = function(evt){
-		vid2.src = URL.createObjectURL(evt.stream);
+	pc.ondatachannel = function(evt){
+		var dc = evt.channel;
+		
+		dc.onopen = function(){
+			next(false, dc);
+		};
 	};
 	
 	function answerSent(){
@@ -125,31 +116,81 @@ function join(){
 	
 	function processOffer(){
 		inst.innerText = "Processing...";
-		var things = area.value.split("♀");
+		var offer = new RTCSessionDescription(JSON.parse(area.value));
 		area.value = "";
-		var offer = new RTCSessionDescription(JSON.parse(things.shift()));
 		
 		pc.setRemoteDescription(offer);
 		pc.createAnswer(function(desc){
 			console.log(desc);
-			pc.setLocalDescription(desc, function(){
-				candidates = JSON.stringify(pc.localDescription);
-			}, function(){});
+			pc.setLocalDescription(desc);
 		}, function(){});
-		
-		for(var i in things){
-			var candidate = new RTCIceCandidate(JSON.parse(things[i]));
-			console.log(candidate);
-			pc.addIceCandidate(candidate);
-		}
 	}
-	
-	navigator.webkitGetUserMedia({video: true, audio: true}, function(stream){
-		vid1.src = URL.createObjectURL(stream);
-		pc.addStream(stream);
 		
-		acceptOffer();
-	}, function(){});
+	acceptOffer();
+}
+
+function next(creater, dc){
+	console.log("next " + creater);
+
+	var pc;
+	
+	// call start() to initiate
+	
+	function start() {
+		pc = new webkitRTCPeerConnection(servers);
+		
+		// send any ice candidates to the other peer
+		pc.onicecandidate = function (evt) {
+			if (evt.candidate)
+				dc.send(JSON.stringify({
+					'candidate': evt.candidate
+				}));
+		};
+		
+		// let the 'negotiationneeded' event trigger offer generation
+		pc.onnegotiationneeded = function () {
+			pc.createOffer(localDescCreated);
+		}
+		
+		// once remote stream arrives, show it in the remote video element
+		pc.onaddstream = function (evt) {
+			vid2.src = URL.createObjectURL(evt.stream);
+		};
+	
+		// get a local stream, show it in a self-view and add it to be sent
+		navigator.webkitGetUserMedia({
+			'audio': true,
+			'video': true
+		}, function (stream) {
+			vid1.src = URL.createObjectURL(stream);
+			pc.addStream(stream);
+		}, function(){});
+	}
+
+	function localDescCreated(desc) {
+		pc.setLocalDescription(desc, function () {
+			dc.send(JSON.stringify({
+				'sdp': pc.localDescription
+			}));
+		});
+	}
+
+	if(creater){ start(); }
+
+	dc.onmessage = function (evt) {
+		if (!pc)
+			start();
+
+		var message = JSON.parse(evt.data);
+		if (message.sdp)
+			pc.setRemoteDescription(new RTCSessionDescription(message.sdp), function () {
+				// if we received an offer, we need to answer
+				if (pc.remoteDescription.type == 'offer')
+					pc.createAnswer(localDescCreated);
+			});
+		else
+			pc.addIceCandidate(new RTCIceCandidate(message.candidate));
+	};
 }
 
 </script>
