@@ -107,6 +107,7 @@ function join(){
 			next(false, dc);
 		};
 		
+		dc.onerror = logError;
 	};
 	
 	function answerSent(){
