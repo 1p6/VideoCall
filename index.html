@@ -72,6 +72,9 @@ function create(){
 		dc.onopen = function(){
 			next(true, dc);
 		};
+		
+		dc.onerror = logError;
+		
 		console.log(dc.onopen);
 	}
 	
@@ -103,6 +106,7 @@ function join(){
 		dc.onopen = function(){
 			next(false, dc);
 		};
+		
 	};
 	
 	function answerSent(){
