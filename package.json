@@ -10,7 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.13.1",
-    "jquery": "^2.1.4",
     "simple-peer": "^5.11.4"
   },
   "devDependencies": {
