@@ -20,7 +20,7 @@ var joinBtn = document.querySelector("#join");
 createBtn.onclick = create;
 joinBtn.onclick = join;
 
-var servers = {iceServers:[{urls:'stun:stun1.l.google.com:19302'}]};
+var servers = {iceServers:[{urls:'stun:stun1.l.google.com:19302', url: 'stun:stun1.l.google.com:19302'}]};
 
 function logError(err){
 	alert(err.name + ": " + err.message);
