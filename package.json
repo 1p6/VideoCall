@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A web site that allows 2 people to talk to each other using webrtc with no server in between",
   "scripts": {
-    "test": "npm run build && node test.js",
+    "test": "npm run build && node test.js 8080",
     "build": "browserify js/main.js | uglifyjs > bundle.js"
   },
   "author": "1p6",
