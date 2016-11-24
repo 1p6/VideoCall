@@ -1,8 +1,7 @@
 var SimplePeer = require("simple-peer");
 var $ = function(s){ return document.querySelector(s) };
-var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia
 
-getUserMedia({audio: true, video: true}, function(stream){
+navigator.mediaDevices.getUserMedia({audio: true, video: true}).then(function(stream){
 	$('#vid1').src = URL.createObjectURL(stream);
 
 	var peer = new SimplePeer({initiator: location.hash === "#1", trickle: false, stream: stream});
@@ -20,6 +19,6 @@ getUserMedia({audio: true, video: true}, function(stream){
 		$('#vid2').src = URL.createObjectURL(stream);
 	});
 
-}, function(){
-	alert("Error");
+}).catch(function(err){
+	alert("Error\n" + err.message);
 });
