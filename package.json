@@ -4,16 +4,15 @@
   "description": "A web site that allows 2 people to talk to each other using webrtc with no server in between",
   "scripts": {
     "test": "npm run build && node test.js 8080",
-    "build": "browserify js/main.js | uglifyjs > bundle.js"
+    "build": "browserify js/main.js > bundle.js"
   },
   "author": "1p6",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.13.1",
-    "simple-peer": "^5.11.4"
+    "express": "4",
+    "simple-peer": "9"
   },
   "devDependencies": {
-    "browserify": "^11.0.0",
-    "uglifyjs": "^2.4.10"
+    "browserify": "17"
   }
 }
