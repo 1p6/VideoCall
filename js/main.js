@@ -38,4 +38,8 @@ $('#start').onclick = async () => {
 	peer.on('stream', function(stream){
 		$('#vid2').srcObject = stream;
 	});
+
+	peer.on('error', function(e){
+		alert(`peer\n${e.name}\n${e.message}`);
+	});
 };
